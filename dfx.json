@@ -1,0 +1,17 @@
+{
+  "canisters": {
+    "rugby_league_backend": {
+      "candid": "src/rugby_league_backend/rugby_league_backend.did",
+      "package": "rugby_league_backend",
+      "type": "rust"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
