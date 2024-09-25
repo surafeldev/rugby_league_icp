@@ -1,61 +1,132 @@
-# `rugby_league`
+# Rugby League Player Transfer Management System
 
-Welcome to your new `rugby_league` project and to the Internet Computer development community. By default, creating a new project adds this README and some template files to your project directory. You can edit these template files to customize your project and to include your own code to speed up the development cycle.
+## Overview
 
-To get started, you might want to explore the project directory structure and the default configuration file. Working with this project in your development environment will not affect any production deployment or identity tokens.
+The Rugby League Player Transfer Management System is a decentralized application designed to manage rugby league player profiles, transfers, and transfer offers. Built using Rust, the application leverages the Internet Computer (IC) for decentralized and reliable data storage and access.
 
-To learn more before you start working with `rugby_league`, see the following documentation available online:
+## Features
 
-- [Quick Start](https://internetcomputer.org/docs/current/developer-docs/setup/deploy-locally)
-- [SDK Developer Tools](https://internetcomputer.org/docs/current/developer-docs/setup/install)
-- [Rust Canister Development Guide](https://internetcomputer.org/docs/current/developer-docs/backend/rust/)
-- [ic-cdk](https://docs.rs/ic-cdk)
-- [ic-cdk-macros](https://docs.rs/ic-cdk-macros)
-- [Candid Introduction](https://internetcomputer.org/docs/current/developer-docs/backend/candid/)
+- **Player Management**: Create and retrieve player profiles.
+- **Transfer Management**: Create and track player transfers between teams.
+- **Transfer Offers**: Create, accept, and reject transfer offers.
+- **Data Storage**: Persistent storage for player profiles, transfers, and offers.
 
-If you want to start working on your project right away, you might want to try the following commands:
+## Getting Started
 
-```bash
-cd rugby_league/
-dfx help
-dfx canister --help
+### Prerequisites
+
+- [Rust](https://www.rust-lang.org/tools/install) (version 1.60 or later)
+- [IC SDK](https://sdk.dfinity.org/docs/developers-guide/install-upgrade.html)
+
+### Installation
+
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/your-repo/rugby-league-player-transfer-management.git
+   cd rugby-league-player-transfer-management
+   ```
+
+2. **Install Dependencies**
+
+   Ensure you have the necessary Rust dependencies installed by running:
+
+   ```bash
+   cargo build
+   ```
+
+3. **Deploy to Internet Computer**
+
+   Follow the [IC SDK deployment guide](https://sdk.dfinity.org/docs/developers-guide/deploy.html) to deploy the project to the Internet Computer.
+
+## Usage
+
+### Player Management
+
+- **Create a Player**
+
+  Use the `create_player` update call to add a new player. Provide the player details in the `PlayerPayload`.
+
+  ```json
+  {
+    "name": "John Doe",
+    "position": "Fly-half",
+    "current_team": "Warriors",
+    "market_value": 1000000,
+    "contract_until": 2025,
+    "age": 28,
+    "nationality": "Australian"
+  }
+  ```
+
+- **Retrieve All Players**
+
+  Use the `get_players` query call to retrieve a list of all players.
+
+- **Retrieve Player by ID**
+
+  Use the `get_player_by_id` query call with the player's ID to get detailed information.
+
+### Transfer Management
+
+- **Create a Transfer**
+
+  Use the `create_transfer` update call to record a new transfer. Provide the transfer details in the `TransferPayload`.
+
+  ```json
+  {
+    "player_id": 1,
+    "from_team": "Warriors",
+    "to_team": "Tigers",
+    "transfer_fee": 500000,
+    "transfer_date": 1693017600,
+    "contract_duration": 2
+  }
+  ```
+
+- **Retrieve All Transfers**
+
+  Use the `get_transfers` query call to retrieve a list of all transfers.
+
+- **Retrieve Transfer by ID**
+
+  Use the `get_transfer_by_id` query call with the transfer's ID to get detailed information.
+
+### Transfer Offers
+
+- **Create a Transfer Offer**
+
+  Use the `create_transfer_offer` update call to make a new transfer offer. Provide the offer details in the `TransferOfferPayload`.
+
+  ```json
+  {
+    "player_id": 1,
+    "from_team": "Tigers",
+    "to_team": "Eagles",
+    "offer_amount": 700000
+  }
+  ```
+
+- **Retrieve All Transfer Offers**
+
+  Use the `get_transfer_offers` query call to retrieve a list of all transfer offers.
+
+- **Retrieve Transfer Offer by ID**
+
+  Use the `get_transfer_offer_by_id` query call with the offer's ID to get detailed information.
+
+- **Accept or Reject a Transfer Offer**
+
+  Use `accept_transfer_offer` or `reject_transfer_offer` update calls with the offer ID to accept or reject a transfer offer.
+
+## Error Handling
+
+- **Invalid Payload**: Ensure all required fields are provided and valid.
+- **Not Found**: Check if the provided ID exists in the system.
+- **Error**: Review the error message for specific issues related to the operation.
+
+---
+
+Thank you for using the Rugby League Player Transfer Management System!
 ```
 
-## Running the project locally
-
-If you want to test your project locally, you can use the following commands:
-
-```bash
-# Starts the replica, running in the background
-dfx start --background
-
-# Deploys your canisters to the replica and generates your candid interface
-dfx deploy
-```
-
-Once the job completes, your application will be available at `http://localhost:4943?canisterId={asset_canister_id}`.
-
-If you have made changes to your backend canister, you can generate a new candid interface with
-
-```bash
-npm run generate
-```
-
-at any time. This is recommended before starting the frontend development server, and will be run automatically any time you run `dfx deploy`.
-
-If you are making frontend changes, you can start a development server with
-
-```bash
-npm start
-```
-
-Which will start a server at `http://localhost:8080`, proxying API requests to the replica at port 4943.
-
-### Note on frontend environment variables
-
-If you are hosting frontend code somewhere without using DFX, you may need to make one of the following adjustments to ensure your project does not fetch the root key in production:
-
-- set`DFX_NETWORK` to `ic` if you are using Webpack
-- use your own preferred method to replace `process.env.DFX_NETWORK` in the autogenerated declarations
-  - Setting `canisters -> {asset_canister_id} -> declarations -> env_override to a string` in `dfx.json` will replace `process.env.DFX_NETWORK` with the string in the autogenerated declarations
-- Write your own `createActor` constructor
