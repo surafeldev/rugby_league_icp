@@ -4,7 +4,7 @@ use candid::{Decode, Encode};
 use ic_cdk::api::time;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{BoundedStorable, Cell, DefaultMemoryImpl, StableBTreeMap, Storable};
-use std::{borrow::Cow, cell::RefCell};
+use std::{borrow::Cow, sync::Mutex};
 
 // Type aliases for memory management
 type Memory = VirtualMemory<DefaultMemoryImpl>;
@@ -51,47 +51,17 @@ struct TransferOffer {
 }
 
 // Implementations for serialization and storage
-impl Storable for PlayerProfile {
+impl<T: candid::CandidType + serde::Serialize + for<'de> serde::Deserialize<'de>> Storable for T {
     fn to_bytes(&self) -> Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
+        Cow::Owned(Encode!(self).expect("Serialization failed"))
     }
 
     fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
+        Decode!(bytes.as_ref(), Self).expect("Deserialization failed")
     }
 }
 
-impl BoundedStorable for PlayerProfile {
-    const MAX_SIZE: u32 = 1024;
-    const IS_FIXED_SIZE: bool = false;
-}
-
-impl Storable for PlayerTransfer {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
-    }
-}
-
-impl BoundedStorable for PlayerTransfer {
-    const MAX_SIZE: u32 = 1024;
-    const IS_FIXED_SIZE: bool = false;
-}
-
-impl Storable for TransferOffer {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
-    }
-
-    fn from_bytes(bytes: Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
-    }
-}
-
-impl BoundedStorable for TransferOffer {
+impl<T: candid::CandidType + serde::Serialize + for<'de> serde::Deserialize<'de>> BoundedStorable for T {
     const MAX_SIZE: u32 = 1024;
     const IS_FIXED_SIZE: bool = false;
 }
@@ -121,6 +91,8 @@ thread_local! {
         RefCell::new(StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(3)))
     ));
+
+    static UNIQUE_PLAYER_IDS: RefCell<Mutex<HashSet<u64>>> = RefCell::new(Mutex::new(HashSet::new()));
 }
 
 // Payloads for creating and updating player profiles and transfers
@@ -162,6 +134,15 @@ enum Message {
     InvalidPayload(String),
 }
 
+// Utility function to validate timestamps
+fn validate_timestamp(timestamp: u64) -> Result<(), Message> {
+    if timestamp < current_time() {
+        Err(Message::InvalidPayload("Timestamp must be in the future".to_string()))
+    } else {
+        Ok(())
+    }
+}
+
 // Function to create a new player profile
 #[ic_cdk::update]
 fn create_player_profile(payload: PlayerProfilePayload) -> Result<PlayerProfile, Message> {
@@ -175,12 +156,19 @@ fn create_player_profile(payload: PlayerProfilePayload) -> Result<PlayerProfile,
         ));
     }
 
+    validate_timestamp(payload.contract_until)?;
+
     let id = ID_COUNTER
         .with(|counter| {
             let current_value = *counter.borrow().get();
             counter.borrow_mut().set(current_value + 1)
         })
         .expect("Cannot increment ID counter");
+
+    let mut unique_ids = UNIQUE_PLAYER_IDS.with(|ids| ids.borrow().lock().unwrap());
+    if !unique_ids.insert(id) {
+        return Err(Message::Error("Player ID must be unique".to_string()));
+    }
 
     let player_profile = PlayerProfile {
         id,
@@ -257,6 +245,8 @@ fn create_player_transfer(payload: PlayerTransferPayload) -> Result<PlayerTransf
             "Ensure 'transfer_fee' and 'contract_duration' are provided.".to_string(),
         ));
     }
+
+    validate_timestamp(payload.transfer_date)?;
 
     // Ensure the player is not transferring to the same team
     if payload.from_team == payload.to_team {
@@ -363,6 +353,8 @@ fn create_transfer_offer(payload: TransferOfferPayload) -> Result<TransferOffer,
             "Offer amount must be greater than 0.".to_string(),
         ));
     }
+
+    validate_timestamp(current_time())?;
 
     let player_profile = PLAYER_PROFILE_STORAGE.with(|storage| {
         storage
